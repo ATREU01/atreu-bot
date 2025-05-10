@@ -1,60 +1,42 @@
-// Atreu Bot: Twitter Auto-Reply Engine (Railway Deployment)
-// GPT + Twitter v2 API
-
-import dotenv from "dotenv";
-import { TwitterApi } from "twitter-api-v2";
-import OpenAI from "openai";
-import express from "express";
-
+import { TwitterApi } from 'twitter-api-v2';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 dotenv.config();
 
-const twitter = new TwitterApi({
-  appKey: process.env.API_KEY,
-  appSecret: process.env.API_SECRET,
-  accessToken: process.env.ACCESS_TOKEN,
-  accessSecret: process.env.ACCESS_SECRET,
+const client = new TwitterApi({
+  appKey: process.env.X_API_KEY,
+  appSecret: process.env.X_API_SECRET_KEY,
+  accessToken: process.env.X_ACCESS_TOKEN,
+  accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
 });
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_KEY });
-const client = twitter.readWrite;
-const app = express();
+const openai = new OpenAI({
+  apiKey: process.env.OPEN_API_KEY,
+});
 
-const BOT_HANDLE = "@AtreuAi";
-const STREAM_KEYWORDS = ["sol", "elon", "$atreu", "pumpfun", "memecoin"];
+const stream = await client.v2.searchStream({
+  'tweet.fields': ['referenced_tweets', 'author_id'],
+  expansions: ['referenced_tweets.id'],
+});
 
-async function monitorTweets() {
-  const { data } = await client.v2.search(STREAM_KEYWORDS.join(" OR "), {
-    "tweet.fields": "author_id",
-    expansions: "author_id",
-    max_results: 10,
+for await (const { data } of stream) {
+  const tweetText = data.text;
+  const username = data.author_id;
+
+  // Prevent replying to retweets
+  if (data.referenced_tweets?.[0]?.type === 'retweeted') continue;
+
+  // Skip tweets from self
+  const botUser = await client.v2.me();
+  if (username === botUser.data.id) continue;
+
+  const prompt = `You are Atreu, a crypto AI that uses archetypal resonance, memetic energy, and Clif High–style linguistics to assess sentiment and market momentum. The tweet is: "${tweetText}". How should Atreu respond? Keep it short, insightful, and mysterious.`;
+
+  const aiResponse = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [{ role: 'user', content: prompt }],
   });
 
-  for (const tweet of data.data || []) {
-    if (tweet.text.toLowerCase().includes("atreu")) {
-      const reply = await generateAtreuReply(tweet.text);
-      await client.v2.reply(reply, tweet.id);
-    }
-  }
+  const reply = aiResponse.choices[0].message.content;
+  await client.v2.reply(reply, data.id);
 }
-
-async function generateAtreuReply(tweetText) {
-  const prompt = `You are Atreu, an archetypal market interpreter trained in Clif High-style linguistics, memetic resonance, and pattern-based foresight. Reply to this tweet insightfully in your voice:
-
-Tweet: "${tweetText}"
-
-Atreu:`;
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: 120,
-    temperature: 0.9,
-  });
-
-  return completion.choices[0].message.content.trim();
-}
-
-app.get("/", (_, res) => res.send("Atreu X bot is running."));
-app.listen(process.env.PORT || 3000);
-
-setInterval(monitorTweets, 90000);
