@@ -1,0 +1,18 @@
+{
+  "name": "atreu-bot",
+  "version": "1.0.0",
+  "description": "This is the oracle the crypto space needs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "openai": "^4.0.0",
+    "twit": "^2.2.11"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
