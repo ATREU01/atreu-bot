@@ -3,50 +3,57 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// --- Express server (optional for Railway health check) ---
+// Express health route for Railway
 const app = express();
 const port = process.env.PORT || 8080;
+
 app.get('/', (req, res) => {
-  res.send('Atreu bot is running and watching...');
+  res.send('Atreu bot is running.');
 });
 app.listen(port, () => {
-  console.log(`Atreu bot server live on port ${port}`);
+  console.log(`Atreu server live on port ${port}`);
 });
 
-// --- Twitter client via OAuth 2.0 (Bearer Token) ---
-const client = new TwitterApi(process.env.X_BEARER_TOKEN);
-const rwClient = client.readOnly;
+// Twitter OAuth 1.0a auth (fully env-secured)
+const client = new TwitterApi({
+  appKey: process.env.X_API_KEY,
+  appSecret: process.env.X_API_SECRET_KEY,
+  accessToken: process.env.X_ACCESS_TOKEN,
+  accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
+});
+const rwClient = client.readWrite;
 
-const botUserId = '1921114068481376256'; // Atreu bot's actual user ID
+const BOT_ID = '1921114068481376256'; // do not expose in .env for security, this is public data
+let lastSeenId = null;
 
-// --- Main async function to listen and auto-reply ---
-(async () => {
+const pollTweets = async () => {
   try {
-    const stream = await rwClient.v2.searchStream({
-      'tweet.fields': ['author_id'],
-    });
+    const searchParams = {
+      query: 'atreu -is:retweet',
+      'tweet.fields': 'author_id',
+      max_results: 10,
+    };
 
-    console.log('🟢 Atreu is watching the signal stream on X...');
+    const result = await rwClient.v2.search(searchParams);
+    const tweets = result.data?.data || [];
 
-    for await (const { data } of stream) {
-      if (!data || data.author_id === botUserId) continue;
+    for (const tweet of tweets.reverse()) {
+      if (tweet.author_id === BOT_ID || tweet.id === lastSeenId) continue;
 
-      const tweetText = data.text.toLowerCase();
+      console.log(`📡 Found tweet: ${tweet.text}`);
 
-      if (tweetText.includes('atreu')) {
-        console.log(`🔁 Mention detected: ${data.text}`);
-        try {
-          await client.v2.reply(
-            `I am not a token. I am a signal anchor. You already feel it. #AtreuRises`,
-            data.id
-          );
-          console.log(`✅ Replied to tweet ID: ${data.id}`);
-        } catch (replyError) {
-          console.error(`❌ Failed to reply: ${replyError}`);
-        }
-      }
+      await rwClient.v2.reply(
+        `Atreu doesn't chase pumps. He decodes momentum. You already feel it. #AtreuRises`,
+        tweet.id
+      );
+      console.log(`✅ Replied to tweet ID: ${tweet.id}`);
+
+      lastSeenId = tweet.id;
     }
-  } catch (streamError) {
-    console.error('❌ Stream error:', streamError);
+  } catch (error) {
+    console.error('❌ Error during polling:', error);
   }
-})();
+};
+
+// 🔁 Poll every 60 seconds
+setInterval(pollTweets, 60 * 1000);
