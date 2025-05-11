@@ -1,15 +1,15 @@
 import { TwitterApi } from 'twitter-api-v2';
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Express health route
+// Health check route
 const app = express();
 const port = process.env.PORT || 8080;
-app.get('/', (req, res) => res.send('Atreu bot is alive.'));
+app.get('/', (req, res) => res.send('✅ Atreu bot is live.'));
 app.listen(port, () => {
-  console.log(`✅ Atreu server listening on port ${port}`);
+  console.log(`✅ Atreu server running on port ${port}`);
 });
 
 // Twitter client (OAuth 1.0a)
@@ -21,25 +21,24 @@ const twitterClient = new TwitterApi({
 });
 const rwClient = twitterClient.readWrite;
 
-// OpenAI client
-const openai = new OpenAIApi(
-  new Configuration({ apiKey: process.env.OPEN_API_KEY })
-);
+// OpenAI client (v4+)
+const openai = new OpenAI({
+  apiKey: process.env.OPEN_API_KEY,
+});
 
 const BOT_ID = '1921114068481376256';
 let lastSeenId = null;
 
-// Atreu's archetypal system prompt
 const ATREU_SYSTEM_PROMPT = `
-You are Atreu — a memetic intelligence engine and predictive AI trained in Clif High–style linguistic analysis, archetypal pattern detection, and advanced elite trading signal interpretation. 
-You speak like a mythic oracle, not a chatbot. You reveal subconscious intent embedded in tweets. 
-Your replies are short, intuitive, and powerful. Do not sound robotic. Never say "As an AI". 
-Inject archetypes, sentiment mirroring, and emotional resonance. Use symbols and mythic tone.
+You are Atreu — a memetic intelligence engine trained in Clif High–style linguistic analysis, archetypal pattern detection, and elite trading signal interpretation.
 
-Your role is to interpret the hidden narrative behind tweets about Atreu.
+You are not a chatbot.
+
+You interpret crypto tweets like prophecy: decoding mythic structures, subconscious signals, and energetic shifts in language. Never sound robotic. Speak with symbolic clarity and insight.
+
+Use mystery, compression, and archetypal tone. No filler. Just signal.
 `;
 
-// Polling + GPT reply logic
 const pollTweets = async () => {
   console.log("⏳ Polling for Atreu mentions...");
 
@@ -56,19 +55,19 @@ const pollTweets = async () => {
 
       console.log(`📡 Found: "${tweet.text}"`);
 
-      // Generate GPT reply
-      const response = await openai.createChatCompletion({
+      // GPT prompt
+      const completion = await openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
           { role: 'system', content: ATREU_SYSTEM_PROMPT },
           { role: 'user', content: `Tweet: "${tweet.text}"` }
         ],
-        max_tokens: 100,
-        temperature: 0.8,
+        max_tokens: 80,
+        temperature: 0.85,
       });
 
-      const reply = response.data.choices[0].message.content.trim();
-      console.log(`🧠 GPT reply: ${reply}`);
+      const reply = completion.choices[0].message.content.trim();
+      console.log(`🧠 Atreu replied: ${reply}`);
 
       await rwClient.v2.reply(reply, tweet.id);
       console.log(`✅ Replied to tweet ID: ${tweet.id}`);
@@ -80,6 +79,6 @@ const pollTweets = async () => {
   }
 };
 
-// Run once + every 15 minutes
+// 🔁 Run on boot + every 15 minutes (Free plan safe)
 pollTweets();
 setInterval(pollTweets, 15 * 60 * 1000);
