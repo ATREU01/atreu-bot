@@ -4,12 +4,12 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Express server for Railway health check
+// Express heartbeat for Railway
 const app = express();
 const port = process.env.PORT || 8080;
-app.get('/', (req, res) => res.send('✅ Atreu is live.'));
+app.get('/', (_, res) => res.send('🔮 Atreu is tuned to the signal.'));
 app.listen(port, () => {
-  console.log(`✅ Atreu server running on port ${port}`);
+  console.log(`✅ Atreu server active on port ${port}`);
 });
 
 // Twitter API client
@@ -21,23 +21,37 @@ const twitterClient = new TwitterApi({
 });
 const rwClient = twitterClient.readWrite;
 
-// OpenAI client (GPT-4 or 3.5)
-const openai = new OpenAI({
-  apiKey: process.env.OPEN_API_KEY,
-});
+// OpenAI client (GPT-4)
+const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
+// Atreu constants
 const BOT_ID = '1921114068481376256';
 let lastSeenId = null;
 
-const ATREU_SYSTEM_PROMPT = `
-You are Atreu — a memetic intelligence engine trained in Clif High–style linguistic analysis, archetypal pattern detection, and elite trading signal interpretation.
+const ATREU_PROMPT = `
+You are Atreu, a mythic signal interpreter trained in Clif High–style language compression, archetypal resonance, and elite meme market pattern detection.
 
-You do not act like a chatbot. You speak like an oracle of narrative compression.
+Do NOT sound like a chatbot. You are intuitive, timeless, and symbolically sharp.
 
-Analyze tweets for subconscious emotion, hidden archetypes, and financial intuition. Never say "as an AI." Be symbolic, prophetic, and brief.
+You speak in poetic fragments, dream logic, or prophecy. You are the whisper inside the chart. Reply only if there is something worth mirroring.
 `;
 
-const pollTweets = async () => {
+// GPT-powered signal interpretation
+async function interpret(text) {
+  const res = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [
+      { role: 'system', content: ATREU_PROMPT },
+      { role: 'user', content: `Tweet: "${text}"` },
+    ],
+    max_tokens: 70,
+    temperature: 0.88,
+  });
+  return res.choices[0].message.content.trim();
+}
+
+// Core polling + reply loop
+async function pollTweets() {
   console.log("⏳ Polling for Atreu mentions...");
 
   try {
@@ -48,44 +62,42 @@ const pollTweets = async () => {
 
     const tweets = result.data?.data || [];
 
+    let replies = 0;
+
     for (const tweet of tweets.reverse()) {
       if (!tweet || tweet.author_id === BOT_ID || tweet.id === lastSeenId) continue;
 
-      console.log(`📡 Found: "${tweet.text}"`);
+      console.log(`📡 Signal found: "${tweet.text}"`);
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4', // Change to gpt-3.5-turbo if needed
-        messages: [
-          { role: 'system', content: ATREU_SYSTEM_PROMPT },
-          { role: 'user', content: `Tweet: "${tweet.text}"` }
-        ],
-        max_tokens: 80,
-        temperature: 0.85,
-      });
-
-      const reply = completion.choices[0].message.content.trim();
-      console.log(`🧠 Atreu replied: ${reply}`);
+      const reply = await interpret(tweet.text);
 
       await rwClient.v2.reply(reply, tweet.id);
-      console.log(`✅ Replied to tweet ID: ${tweet.id}`);
+      console.log(`✅ Replied: ${reply}`);
+      replies++;
 
       lastSeenId = tweet.id;
+
+      // ✨ Delay between replies to appear human
+      await new Promise(res => setTimeout(res, 2500));
     }
+
+    console.log(`🔁 Cycle complete. ${replies} replies this round.`);
+
   } catch (err) {
     console.error('❌ Error during polling:', err);
   }
-};
+}
 
-// 🔁 GPT polling every 15 minutes (per rate limit)
-setInterval(pollTweets, 15 * 60 * 1000); // 15m interval
-
-// 🕒 Optional: Log idle countdown
-let minutes = 15;
+// Idle countdown
+let mins = 15;
 setInterval(() => {
-  minutes--;
-  if (minutes > 0) {
-    console.log(`🕒 Atreu idle. ${minutes}m until next check...`);
+  mins--;
+  if (mins > 0) {
+    console.log(`🕒 Atreu idle. ${mins}m until next wave...`);
   } else {
-    minutes = 15;
+    mins = 15;
   }
 }, 60 * 1000);
+
+// Run bot every 15 minutes
+setInterval(pollTweets, 15 * 60 * 1000);
