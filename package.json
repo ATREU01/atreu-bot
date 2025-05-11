@@ -1,8 +1,8 @@
 {
   "name": "atreu-bot",
   "version": "1.0.0",
-  "description": "This is the oracle the crypto space needs",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
@@ -10,7 +10,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "openai": "^4.0.0",
-    "twit": "^2.2.11"
+    "twitter-api-v2": "^2.2.11"
   },
   "engines": {
     "node": ">=16"
