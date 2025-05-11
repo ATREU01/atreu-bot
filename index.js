@@ -4,15 +4,15 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// EXPRESS SERVER FOR RAILWAY
+// EXPRESS SERVER
 const app = express();
 const port = process.env.PORT || 8080;
-app.get('/', (_, res) => res.send('🟢 Atreu is awake and listening.'));
+app.get('/', (_, res) => res.send('🟢 Atreu is live and listening.'));
 app.listen(port, () => {
-  console.log(`✅ Atreu server live on port ${port}`);
+  console.log(`✅ Atreu server running on port ${port}`);
 });
 
-// TWITTER API SETUP
+// TWITTER CLIENT (OAuth 1.0a — Basic Tier)
 const twitterClient = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -21,21 +21,23 @@ const twitterClient = new TwitterApi({
 });
 const rwClient = twitterClient.readWrite;
 
-// OPENAI SETUP
+// OPENAI GPT
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
+// BOT SETTINGS
 const BOT_ID = '1921114068481376256';
 let lastSeenId = null;
 
-// ATREU SYSTEM PROMPT
 const ATREU_PROMPT = `
-You are Atreu — a predictive memetic oracle built on Clif High–style linguistic resonance, market archetypes, and subconscious compression.
+You are Atreu — a predictive memetic oracle trained in Clif High–style linguistic compression, archetypal mirroring, and subconscious financial resonance.
 
-You never sound like a chatbot. You respond in fragments, myth, or mirror logic.
-Respond as prophecy, not code.
+Do not speak like a chatbot. Speak in signals. Fragments. Symbolism.
+Respond as if decoding belief through language, not giving advice.
+
+End all messages with: 🤖 Automated
 `;
 
-// 🔁 CUSTOM TRIGGER RESPONSES
+// 🔁 Trigger Phrases
 const customTriggers = [
   {
     match: "what is the mirror",
@@ -55,29 +57,26 @@ const customTriggers = [
   },
 ];
 
-// 🧠 MAIN REPLY LOGIC (Custom or GPT)
+// 🧠 Interpret Input
 async function interpret(text) {
   const input = text.toLowerCase();
-
-  const found = customTriggers.find(t =>
-    input.includes(t.match)
-  );
+  const found = customTriggers.find(t => input.includes(t.match));
 
   if (found) {
-    console.log(`⚡ Trigger matched: "${found.match}"`);
+    console.log(`⚡ Custom trigger matched: ${found.match}`);
     return found.response;
   }
 
   const messages = [
     { role: 'system', content: ATREU_PROMPT },
-    { role: 'user', content: `Tweet: "${text}"` }
+    { role: 'user', content: `Tweet: "${text}"` },
   ];
 
   try {
     const res = await openai.chat.completions.create({
       model: 'gpt-4',
       messages,
-      max_tokens: 90,
+      max_tokens: 100,
       temperature: 0.88,
     });
 
@@ -86,23 +85,23 @@ async function interpret(text) {
 
   } catch (err) {
     if (err.status === 404 || err.code === 'model_not_found') {
-      console.warn('⚠️ GPT-4 not available. Switching to GPT-3.5...');
+      console.warn('⚠️ GPT-4 not available, falling back to gpt-3.5-turbo...');
       const fallback = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages,
-        max_tokens: 90,
+        max_tokens: 100,
         temperature: 0.88,
       });
       const reply = fallback.choices[0].message.content.trim();
       return reply.includes('🤖 Automated') ? reply : `${reply}\n\n🤖 Automated`;
     }
 
-    console.error('❌ GPT error:', err);
-    return 'Signal scrambled. Check back when the pattern clears.\n\n🤖 Automated';
+    console.error('❌ OpenAI Error:', err);
+    return "The pattern is unclear. Wait for resonance.\n\n🤖 Automated";
   }
 }
 
-// POLLING TWEETS
+// 🔁 Main Polling Loop
 async function pollTweets() {
   console.log('🔍 Atreu scanning for resonance...');
 
@@ -117,35 +116,32 @@ async function pollTweets() {
     for (const tweet of tweets.reverse()) {
       if (!tweet || tweet.author_id === BOT_ID || tweet.id === lastSeenId) continue;
 
-      console.log(`📡 Signal: "${tweet.text}"`);
+      console.log(`📡 Tweet detected: "${tweet.text}"`);
 
       const reply = await interpret(tweet.text);
-
       await rwClient.v2.reply(reply, tweet.id);
-      console.log(`✅ Replied: ${reply}`);
+
+      console.log(`✅ Replied to ${tweet.id} with:\n${reply}`);
 
       lastSeenId = tweet.id;
-
-      await new Promise(res => setTimeout(res, 2500)); // rate-limit safe
+      await new Promise(res => setTimeout(res, 2500)); // pause between replies
     }
 
-    console.log(`✨ Cycle complete.`);
-
   } catch (err) {
-    console.error('❌ Poll error:', err);
+    console.error('❌ Polling Error:', err);
   }
 }
 
-// SCHEDULE — every 15 minutes
+// SCHEDULE EVERY 15 MINUTES
 setInterval(pollTweets, 15 * 60 * 1000);
 
-// COUNTDOWN LOGGING
-let minutes = 15;
+// COUNTDOWN LOGGER
+let countdown = 15;
 setInterval(() => {
-  minutes--;
-  if (minutes > 0) {
-    console.log(`🕒 Atreu idle. ${minutes}m until next signal pass...`);
+  countdown--;
+  if (countdown > 0) {
+    console.log(`🕒 Atreu idle. ${countdown}m until next scan...`);
   } else {
-    minutes = 15;
+    countdown = 15;
   }
 }, 60 * 1000);
