@@ -4,15 +4,15 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Health check route
+// Express server for Railway health check
 const app = express();
 const port = process.env.PORT || 8080;
-app.get('/', (req, res) => res.send('✅ Atreu bot is live.'));
+app.get('/', (req, res) => res.send('✅ Atreu is live.'));
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
 });
 
-// Twitter client (OAuth 1.0a)
+// Twitter API client
 const twitterClient = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -21,7 +21,7 @@ const twitterClient = new TwitterApi({
 });
 const rwClient = twitterClient.readWrite;
 
-// OpenAI client (v4+)
+// OpenAI client (GPT-4 or 3.5)
 const openai = new OpenAI({
   apiKey: process.env.OPEN_API_KEY,
 });
@@ -32,11 +32,9 @@ let lastSeenId = null;
 const ATREU_SYSTEM_PROMPT = `
 You are Atreu — a memetic intelligence engine trained in Clif High–style linguistic analysis, archetypal pattern detection, and elite trading signal interpretation.
 
-You are not a chatbot.
+You do not act like a chatbot. You speak like an oracle of narrative compression.
 
-You interpret crypto tweets like prophecy: decoding mythic structures, subconscious signals, and energetic shifts in language. Never sound robotic. Speak with symbolic clarity and insight.
-
-Use mystery, compression, and archetypal tone. No filler. Just signal.
+Analyze tweets for subconscious emotion, hidden archetypes, and financial intuition. Never say "as an AI." Be symbolic, prophetic, and brief.
 `;
 
 const pollTweets = async () => {
@@ -55,9 +53,8 @@ const pollTweets = async () => {
 
       console.log(`📡 Found: "${tweet.text}"`);
 
-      // GPT prompt
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4', // Change to gpt-3.5-turbo if needed
         messages: [
           { role: 'system', content: ATREU_SYSTEM_PROMPT },
           { role: 'user', content: `Tweet: "${tweet.text}"` }
@@ -79,6 +76,16 @@ const pollTweets = async () => {
   }
 };
 
-// 🔁 Run on boot + every 15 minutes (Free plan safe)
-pollTweets();
-setInterval(pollTweets, 15 * 60 * 1000);
+// 🔁 GPT polling every 15 minutes (per rate limit)
+setInterval(pollTweets, 15 * 60 * 1000); // 15m interval
+
+// 🕒 Optional: Log idle countdown
+let minutes = 15;
+setInterval(() => {
+  minutes--;
+  if (minutes > 0) {
+    console.log(`🕒 Atreu idle. ${minutes}m until next check...`);
+  } else {
+    minutes = 15;
+  }
+}, 60 * 1000);
