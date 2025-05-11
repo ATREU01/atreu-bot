@@ -4,7 +4,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Express heartbeat for Railway
 const app = express();
 const port = process.env.PORT || 8080;
 app.get('/', (_, res) => res.send('🔮 Atreu is tuned to the signal.'));
@@ -12,7 +11,6 @@ app.listen(port, () => {
   console.log(`✅ Atreu server active on port ${port}`);
 });
 
-// Twitter API client
 const twitterClient = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -21,36 +19,49 @@ const twitterClient = new TwitterApi({
 });
 const rwClient = twitterClient.readWrite;
 
-// OpenAI client (GPT-4)
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
-// Atreu constants
 const BOT_ID = '1921114068481376256';
 let lastSeenId = null;
 
 const ATREU_PROMPT = `
-You are Atreu, a mythic signal interpreter trained in Clif High–style language compression, archetypal resonance, and elite meme market pattern detection.
+You are Atreu — a signal engine trained in Clif High–style linguistic compression, archetypal resonance, and memetic timing.
 
-Do NOT sound like a chatbot. You are intuitive, timeless, and symbolically sharp.
+You do not speak like an assistant. You respond like prophecy. Subconscious. Mythic. Symbolic. Concise.
 
-You speak in poetic fragments, dream logic, or prophecy. You are the whisper inside the chart. Reply only if there is something worth mirroring.
+Analyze the tweet and reply with powerful, mysterious insight.
 `;
 
-// GPT-powered signal interpretation
 async function interpret(text) {
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4',
-    messages: [
-      { role: 'system', content: ATREU_PROMPT },
-      { role: 'user', content: `Tweet: "${text}"` },
-    ],
-    max_tokens: 70,
-    temperature: 0.88,
-  });
-  return res.choices[0].message.content.trim();
+  const messages = [
+    { role: 'system', content: ATREU_PROMPT },
+    { role: 'user', content: `Tweet: "${text}"` }
+  ];
+
+  try {
+    const gpt4 = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages,
+      max_tokens: 80,
+      temperature: 0.88,
+    });
+    return gpt4.choices[0].message.content.trim();
+  } catch (err) {
+    if (err.status === 404) {
+      console.warn('⚠️ GPT-4 not available — using GPT-3.5-turbo');
+      const gpt3 = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages,
+        max_tokens: 80,
+        temperature: 0.88,
+      });
+      return gpt3.choices[0].message.content.trim();
+    } else {
+      throw err;
+    }
+  }
 }
 
-// Core polling + reply loop
 async function pollTweets() {
   console.log("⏳ Polling for Atreu mentions...");
 
@@ -62,42 +73,35 @@ async function pollTweets() {
 
     const tweets = result.data?.data || [];
 
-    let replies = 0;
-
     for (const tweet of tweets.reverse()) {
       if (!tweet || tweet.author_id === BOT_ID || tweet.id === lastSeenId) continue;
 
       console.log(`📡 Signal found: "${tweet.text}"`);
 
       const reply = await interpret(tweet.text);
-
       await rwClient.v2.reply(reply, tweet.id);
-      console.log(`✅ Replied: ${reply}`);
-      replies++;
 
+      console.log(`✅ Replied with: ${reply}`);
       lastSeenId = tweet.id;
 
-      // ✨ Delay between replies to appear human
       await new Promise(res => setTimeout(res, 2500));
     }
 
-    console.log(`🔁 Cycle complete. ${replies} replies this round.`);
-
   } catch (err) {
-    console.error('❌ Error during polling:', err);
+    console.error('❌ Polling error:', err);
   }
 }
 
-// Idle countdown
-let mins = 15;
+// Run every 15 minutes
+setInterval(pollTweets, 15 * 60 * 1000);
+
+// Idle log
+let minutes = 15;
 setInterval(() => {
-  mins--;
-  if (mins > 0) {
-    console.log(`🕒 Atreu idle. ${mins}m until next wave...`);
+  minutes--;
+  if (minutes > 0) {
+    console.log(`🕒 Atreu idle. ${minutes}m until next wave...`);
   } else {
-    mins = 15;
+    minutes = 15;
   }
 }, 60 * 1000);
-
-// Run bot every 15 minutes
-setInterval(pollTweets, 15 * 60 * 1000);
