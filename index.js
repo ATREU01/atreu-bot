@@ -13,7 +13,7 @@ console.log("🧠 Atreu startup sequence initiated...");
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Twitter client using OAuth 1.0a
+// Twitter API client using OAuth 1.0a
 const client = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -23,12 +23,13 @@ const client = new TwitterApi({
 
 const rwClient = client.readWrite;
 
-// Start server and polling loop
+// Start Express server + begin polling
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
 
+// Main polling + reply logic
 function pollLoop() {
   setInterval(async () => {
     console.log('🔍 Atreu scanning for resonance...');
@@ -39,7 +40,7 @@ function pollLoop() {
         max_results: 10,
       });
 
-      const tweets = result?.data || [];
+      const tweets = Array.isArray(result?.data) ? result.data : [];
 
       const filtered = filterRelevantTweets(tweets);
 
