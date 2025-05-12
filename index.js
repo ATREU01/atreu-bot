@@ -23,26 +23,34 @@ const client = new TwitterApi({
 
 const rwClient = client.readWrite;
 
-// Start server + polling loop
+let BOT_USER_ID;
+
+// Start server and begin polling
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
 
-// Poll every 5 minutes for mentions of @Atr3uAi
-function pollLoop() {
+// Poll mentions using userMentionTimeline for full reliability
+async function pollLoop() {
+  // Fetch bot’s own user ID once
+  if (!BOT_USER_ID) {
+    const me = await rwClient.v2.me();
+    BOT_USER_ID = me.data.id;
+    console.log(`🤖 Atreu ID loaded: ${BOT_USER_ID}`);
+  }
+
   setInterval(async () => {
-    console.log('🔍 Atreu scanning for mentions...');
+    console.log('🔍 Atreu scanning for direct mentions...');
 
     try {
-      const result = await rwClient.v2.search({
-        query: '@Atr3uAi -is:retweet',
-        max_results: 10,
+      const result = await rwClient.v2.userMentionTimeline(BOT_USER_ID, {
+        max_results: 10
       });
 
-      const tweets = Array.isArray(result?.data) ? result.data : [];
+      const tweets = Array.isArray(result?.data?.data) ? result.data.data : [];
 
-      console.log(`📥 Pulled ${tweets.length} tweets from mentions:`);
+      console.log(`📥 Pulled ${tweets.length} tweets from mention timeline:`);
 
       for (const t of tweets) {
         console.log(`🧾 Raw tweet: ${t.text}`);
