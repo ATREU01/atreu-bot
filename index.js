@@ -45,7 +45,7 @@ async function pollLoop() {
 
     try {
       const result = await rwClient.v2.userMentionTimeline(BOT_USER_ID, {
-        max_results: 10
+        max_results: 10,
       });
 
       const tweets = Array.isArray(result?.data?.data) ? result.data.data : [];
