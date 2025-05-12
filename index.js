@@ -4,7 +4,41 @@ import { TwitterApi } from 'twitter-api-v2';
 import dotenv from 'dotenv';
 import express from 'express';
 import { interpretArchetype } from './replies/archetypes.js';
-import { filterRelevantTweets } from './utils/resonance.js';
+
+// Updated tweet filter with wider keyword detection
+export function filterRelevantTweets(tweets) {
+  return tweets.filter(tweet => {
+    const text = tweet.text.toLowerCase();
+
+    const isRelevant =
+      text.includes('atreu') ||
+      text.includes('mirror') ||
+      text.includes('meme') ||
+      text.includes('what do you think') ||
+      text.includes('burn') ||
+      text.includes('cook') ||
+      text.includes('cookin') ||
+      text.includes('signal') ||
+      text.includes('truth') ||
+      text.includes('real') ||
+      text.includes('jeet') ||
+      text.includes('top holder') ||
+      text.includes('soon') ||
+      text.includes('whale') ||
+      text.includes('trash') ||
+      text.includes('fire bot') ||
+      text.includes('beast mode') ||
+      text.includes('check out');
+
+    if (!isRelevant) {
+      console.log(`🚫 Filtered out: ${tweet.text}`);
+    } else {
+      console.log(`✅ Kept: ${tweet.text}`);
+    }
+
+    return isRelevant;
+  });
+}
 
 dotenv.config();
 
@@ -13,7 +47,6 @@ console.log("🧠 Atreu startup sequence initiated...");
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Twitter API client using OAuth 1.0a
 const client = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -25,15 +58,12 @@ const rwClient = client.readWrite;
 
 let BOT_USER_ID;
 
-// Start server and begin polling
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
 
-// Poll mentions using userMentionTimeline for full reliability
 async function pollLoop() {
-  // Fetch bot’s own user ID once
   if (!BOT_USER_ID) {
     const me = await rwClient.v2.me();
     BOT_USER_ID = me.data.id;
@@ -74,5 +104,5 @@ async function pollLoop() {
       console.error('❌ Error polling:', err?.data || err.message || err);
     }
 
-  }, 5 * 60 * 1000); // every 5 minutes
+  }, 5 * 60 * 1000);
 }
