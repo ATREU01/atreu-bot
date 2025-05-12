@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8080;
 
-// OAuth 1.0a client with read/write access
+// Set up Twitter client using OAuth 1.0a credentials
 const client = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -21,22 +21,21 @@ const client = new TwitterApi({
 
 const rwClient = client.readWrite;
 
-// Start the server and polling
+// Start Express server
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
 
-// Polling loop every 5 minutes
+// Main polling + reply logic
 function pollLoop() {
   setInterval(async () => {
     console.log('🔍 Atreu scanning for resonance...');
 
     try {
-      const query = 'atreu OR $atreu OR mirror OR archetype OR gmgn -is:retweet';
-
-      const result = await rwClient.v2.search(query, {
-        max_results: 10,
+      const result = await rwClient.v2.search({
+        query: 'atreu OR $atreu OR mirror OR archetype OR gmgn -is:retweet',
+        max_results: 10
       });
 
       const tweets = result?.data?.data || [];
