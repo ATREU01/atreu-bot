@@ -13,7 +13,7 @@ console.log("🧠 Atreu startup sequence initiated...");
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Twitter client using OAuth 1.0a
+// Twitter API client using OAuth 1.0a
 const client = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET_KEY,
@@ -23,26 +23,26 @@ const client = new TwitterApi({
 
 const rwClient = client.readWrite;
 
-// Start server + begin polling loop
+// Start server + polling loop
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
 
-// Polls Twitter every 5 minutes
+// Poll every 5 minutes for mentions of @Atr3uAi
 function pollLoop() {
   setInterval(async () => {
-    console.log('🔍 Atreu scanning for resonance...');
+    console.log('🔍 Atreu scanning for mentions...');
 
     try {
       const result = await rwClient.v2.search({
-        query: 'atreu OR mirror OR archetype OR gmgn -is:retweet',
+        query: '@Atr3uAi -is:retweet',
         max_results: 10,
       });
 
       const tweets = Array.isArray(result?.data) ? result.data : [];
 
-      console.log(`📥 Pulled ${tweets.length} tweets from search:`);
+      console.log(`📥 Pulled ${tweets.length} tweets from mentions:`);
 
       for (const t of tweets) {
         console.log(`🧾 Raw tweet: ${t.text}`);
@@ -66,5 +66,5 @@ function pollLoop() {
       console.error('❌ Error polling:', err?.data || err.message || err);
     }
 
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000); // every 5 minutes
 }
