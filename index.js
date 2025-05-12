@@ -27,13 +27,15 @@ app.listen(port, () => {
 function pollLoop() {
   setInterval(async () => {
     console.log('🔍 Atreu scanning for resonance...');
+
     try {
-      const { data: tweets } = await rwClient.v2.search('atreu OR $atreu OR mirror OR archetype OR gmgn -is:retweet', {
-        'tweet.fields': ['id', 'text', 'author_id'],
-        max_results: 10
-      });
+      const { data: tweets } = await rwClient.v2.search(
+        'atreu OR $atreu OR mirror OR archetype OR gmgn -is:retweet',
+        { max_results: 10 }
+      );
 
       const filtered = filterRelevantTweets(tweets);
+
       for (const tweet of filtered) {
         const reply = interpretArchetype(tweet.text);
         if (reply) {
@@ -44,5 +46,6 @@ function pollLoop() {
     } catch (err) {
       console.error('❌ Error polling:', err.message);
     }
+
   }, 5 * 60 * 1000); // every 5 minutes
 }
