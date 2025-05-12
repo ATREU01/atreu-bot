@@ -1,13 +1,7 @@
 export function filterRelevantTweets(tweets) {
-  if (!tweets || !Array.isArray(tweets)) return [];
-
   return tweets.filter(tweet => {
-    const t = tweet.text.toLowerCase();
-    return (
-      !t.includes('airdrop') &&
-      !t.includes('follow for') &&
-      t.length > 10 &&
-      t.length < 280
-    );
+    if (!tweet.text) return false;
+    const lower = tweet.text.toLowerCase();
+    return lower.includes('atreu') || lower.includes('$atreu') || lower.includes('mirror') || lower.includes('archetype');
   });
 }
