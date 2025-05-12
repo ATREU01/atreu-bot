@@ -3,6 +3,7 @@
 import { TwitterApi } from 'twitter-api-v2';
 import dotenv from 'dotenv';
 import express from 'express';
+import fs from 'fs';
 import { interpretArchetype } from './replies/archetypes.js';
 
 // Updated tweet filter with wider keyword detection
@@ -57,6 +58,14 @@ const client = new TwitterApi({
 const rwClient = client.readWrite;
 
 let BOT_USER_ID;
+let memory = [];
+
+try {
+  memory = JSON.parse(fs.readFileSync('./memory.json', 'utf8'));
+} catch (err) {
+  console.error('⚠️ Could not load memory.json, using empty memory.');
+  memory = [];
+}
 
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
@@ -89,6 +98,11 @@ async function pollLoop() {
       const filtered = filterRelevantTweets(tweets);
 
       for (const tweet of filtered) {
+        if (memory.includes(tweet.id)) {
+          console.log(`🧠 Skipping already replied tweet: ${tweet.id}`);
+          continue;
+        }
+
         const reply = interpretArchetype(tweet.text);
         if (reply) {
           await rwClient.v2.tweet({
@@ -98,6 +112,10 @@ async function pollLoop() {
             }
           });
           console.log(`✅ Replied to ${tweet.id}`);
+
+          memory.push(tweet.id);
+          fs.writeFileSync('./memory.json', JSON.stringify(memory, null, 2));
+          console.log(`💾 Stored tweet ${tweet.id} to memory`);
         }
       }
     } catch (err) {
