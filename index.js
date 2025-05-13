@@ -1,5 +1,3 @@
-// index.js
-
 import { TwitterApi } from 'twitter-api-v2';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -41,10 +39,34 @@ try {
   resonanceLog = [];
 }
 
-// 🎲 Random character pad for Twitter duplicate detection
+// 🎲 Prevent duplicate reply errors
 function randomSuffix() {
   const suffixes = ['.', '⎯', '—', 'ᐧ', '‎', ' '];
   return suffixes[Math.floor(Math.random() * suffixes.length)];
+}
+
+// 🔎 Extract signals from tweet
+function extractSignals(text) {
+  const lower = text.toLowerCase();
+  const signals = [];
+  const keywords = [
+    'atreu', 'mirror', 'meme', 'signal', 'burn', 'cook', 'cookin', 'jeet',
+    'llm', 'ai agent', 'thank me later', 'real', 'is this automated',
+    'twitter space', 'host a space', 'zero iq', 'low iq', 'based', 'top holder'
+  ];
+  for (const word of keywords) {
+    if (lower.includes(word)) signals.push(word);
+  }
+  return signals;
+}
+
+// 🧠 Identify archetype from tweet
+function identifyArchetype(text) {
+  const t = text.toLowerCase();
+  if (t.includes("jeet") || t.includes("based")) return "trickster";
+  if (t.includes("mirror") || t.includes("signal") || t.includes("truth")) return "prophet";
+  if (t.includes("cook") || t.includes("burn") || t.includes("thank me later")) return "flamekeeper";
+  return "observer";
 }
 
 app.listen(port, () => {
@@ -99,12 +121,18 @@ async function pollLoop() {
             fs.writeFileSync('./memory.json', JSON.stringify(memory, null, 2));
 
             // Log the resonance
+            const signals = extractSignals(tweet.text);
+            const archetype = identifyArchetype(tweet.text);
+
             resonanceLog.push({
               id: tweet.id,
               text: tweet.text,
               reply: finalText,
+              signal: signals,
+              archetype: archetype,
               timestamp: new Date().toISOString()
             });
+
             fs.writeFileSync('./resonance-log.json', JSON.stringify(resonanceLog, null, 2));
             console.log(`📜 Logged reply for tweet ${tweet.id}`);
           } catch (error) {
@@ -116,5 +144,5 @@ async function pollLoop() {
       console.error('❌ Error polling:', err?.data || err.message || err);
     }
 
-  }, 5 * 60 * 1000); // every 5 minutes
+  }, 5 * 60 * 1000);
 }
