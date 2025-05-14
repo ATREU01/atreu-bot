@@ -2,7 +2,8 @@ import { TwitterApi } from 'twitter-api-v2';
 import dotenv from 'dotenv';
 import express from 'express';
 import fs from 'fs';
-import { interpretArchetype } from './replies/archetypes.js';
+import fetch from 'node-fetch'; // ensure installed via npm if not already
+
 import { filterRelevantTweets } from './utils/resonance.js';
 
 dotenv.config();
@@ -69,6 +70,23 @@ function identifyArchetype(text) {
   return "observer";
 }
 
+// 🧠 Live GPT response from webhook
+async function getGPTReply(text) {
+  try {
+    const response = await fetch(process.env.GPT_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: text })
+    });
+
+    const data = await response.json();
+    return data.reply || null;
+  } catch (err) {
+    console.error('❌ GPT fetch failed:', err.message || err);
+    return null;
+  }
+}
+
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
@@ -105,7 +123,7 @@ async function pollLoop() {
           continue;
         }
 
-        const reply = interpretArchetype(tweet.text);
+        const reply = await getGPTReply(tweet.text);
         if (reply) {
           const finalText = `${reply} 🤖 Automated ${randomSuffix()}`;
           try {
