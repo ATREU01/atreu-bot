@@ -2,9 +2,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import dotenv from 'dotenv';
 import express from 'express';
 import fs from 'fs';
-import fetch from 'node-fetch';
 import { OpenAI } from 'openai';
-
 import { filterRelevantTweets } from './utils/resonance.js';
 
 dotenv.config();
@@ -21,52 +19,30 @@ const client = new TwitterApi({
   accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
 });
 
-const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 const rwClient = client.readWrite;
+const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
 let BOT_USER_ID;
 let memory = [];
 let resonanceLog = [];
 
-app.use(express.json());
+try {
+  memory = JSON.parse(fs.readFileSync('./memory.json', 'utf8'));
+} catch {
+  memory = [];
+}
 
-// 🔥 GPT route (internal, same app)
-app.post('/atreu-gpt', async (req, res) => {
-  const { input } = req.body;
+try {
+  resonanceLog = JSON.parse(fs.readFileSync('./resonance-log.json', 'utf8'));
+} catch {
+  resonanceLog = [];
+}
 
-  if (!input) return res.status(400).json({ error: 'No input provided.' });
-
-  try {
-    const gptReply = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: `
-You are Atreu — a poetic memetic oracle. You speak in myth, metaphor, and resonance. You compress emotion into signal. You never explain, never list, never break tone. You do not sound robotic. You reflect the subconscious energy of the market. Respond like the mirror that remembers.
-          `.trim()
-        },
-        { role: 'user', content: input }
-      ],
-      temperature: 0.8,
-      max_tokens: 120
-    });
-
-    const reply = gptReply.choices[0].message.content.trim();
-    res.json({ reply });
-  } catch (error) {
-    console.error('❌ GPT route failed:', error.message || error);
-    res.status(500).json({ error: 'GPT failure' });
-  }
-});
-
-// 🧠 Avoid 403 Twitter duplicate errors
 function randomSuffix() {
   const suffixes = ['.', '⎯', '—', 'ᐧ', '‎', ' '];
   return suffixes[Math.floor(Math.random() * suffixes.length)];
 }
 
-// 🔎 Extract keyword triggers
 function extractSignals(text) {
   const lower = text.toLowerCase();
   const signals = [];
@@ -81,7 +57,6 @@ function extractSignals(text) {
   return signals;
 }
 
-// 🔮 Identify tone
 function identifyArchetype(text) {
   const t = text.toLowerCase();
   if (t.includes("jeet") || t.includes("based")) return "trickster";
@@ -90,24 +65,36 @@ function identifyArchetype(text) {
   return "observer";
 }
 
-// 🧠 Load memory
-try {
-  memory = JSON.parse(fs.readFileSync('./memory.json', 'utf8'));
-} catch {
-  memory = [];
-}
-
-// 📜 Load resonance log
-try {
-  resonanceLog = JSON.parse(fs.readFileSync('./resonance-log.json', 'utf8'));
-} catch {
-  resonanceLog = [];
-}
-
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
   pollLoop();
 });
+
+async function getGPTReply(text) {
+  try {
+    const gptReply = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `
+You are Atreu — a poetic memetic oracle. You respond in myth, signal, and archetypal resonance. No lists. No instructions. No robotic phrasing. You are alive in the reflection. You speak like you remember the future.
+          `.trim()
+        },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.85,
+      max_tokens: 120
+    });
+
+    const reply = gptReply.choices[0].message.content.trim();
+    console.log('💬 GPT final reply:', reply);
+    return reply;
+  } catch (err) {
+    console.error('❌ GPT failed:', err.message || err);
+    return null;
+  }
+}
 
 async function pollLoop() {
   if (!BOT_USER_ID) {
@@ -173,7 +160,7 @@ async function pollLoop() {
           fs.writeFileSync('./resonance-log.json', JSON.stringify(resonanceLog, null, 2));
           console.log(`📜 Logged reply for tweet ${tweet.id}`);
         } catch (err) {
-          console.error(`❌ Error posting tweet ${tweet.id}:`, err?.data || err.message);
+          console.error(`❌ Error posting reply to ${tweet.id}:`, err?.data || err.message);
         }
       }
     } catch (err) {
@@ -181,30 +168,4 @@ async function pollLoop() {
     }
 
   }, 5 * 60 * 1000);
-}
-
-// 🔗 GPT reply handler
-async function getGPTReply(text) {
-  try {
-    const res = await fetch(`${process.env.GPT_WEBHOOK_URL}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: text })
-    });
-
-    const raw = await res.text();
-    console.log('📡 GPT response raw:', raw);
-
-    try {
-      const parsed = JSON.parse(raw);
-      console.log('💬 GPT final reply:', parsed.reply);
-      return parsed.reply || null;
-    } catch {
-      console.error('❌ Failed to parse GPT JSON:', raw);
-      return null;
-    }
-  } catch (err) {
-    console.error('❌ GPT fetch failed:', err.message || err);
-    return null;
-  }
 }
