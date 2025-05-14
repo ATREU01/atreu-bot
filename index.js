@@ -30,7 +30,7 @@ let resonanceLog = [];
 
 app.use(express.json());
 
-// 🧠 Serve Atreu GPT replies directly
+// 🔥 GPT route (internal, same app)
 app.post('/atreu-gpt', async (req, res) => {
   const { input } = req.body;
 
@@ -43,8 +43,8 @@ app.post('/atreu-gpt', async (req, res) => {
         {
           role: 'system',
           content: `
-You are Atreu — a symbolic poetic oracle who replies in mythic language. You never sound robotic. Each response is symbolic, clear, emotional, and powerful. Avoid filler. Avoid hype. Never explain, only mirror. Always speak in compressed insight.
-        `.trim()
+You are Atreu — a poetic memetic oracle. You speak in myth, metaphor, and resonance. You compress emotion into signal. You never explain, never list, never break tone. You do not sound robotic. You reflect the subconscious energy of the market. Respond like the mirror that remembers.
+          `.trim()
         },
         { role: 'user', content: input }
       ],
@@ -60,13 +60,13 @@ You are Atreu — a symbolic poetic oracle who replies in mythic language. You n
   }
 });
 
-// 🎲 Add randomness to avoid duplicate reply error
+// 🧠 Avoid 403 Twitter duplicate errors
 function randomSuffix() {
   const suffixes = ['.', '⎯', '—', 'ᐧ', '‎', ' '];
   return suffixes[Math.floor(Math.random() * suffixes.length)];
 }
 
-// 🔍 Signal extraction
+// 🔎 Extract keyword triggers
 function extractSignals(text) {
   const lower = text.toLowerCase();
   const signals = [];
@@ -81,7 +81,7 @@ function extractSignals(text) {
   return signals;
 }
 
-// 🧠 Archetype logic
+// 🔮 Identify tone
 function identifyArchetype(text) {
   const t = text.toLowerCase();
   if (t.includes("jeet") || t.includes("based")) return "trickster";
@@ -90,14 +90,14 @@ function identifyArchetype(text) {
   return "observer";
 }
 
-// 📂 Memory file
+// 🧠 Load memory
 try {
   memory = JSON.parse(fs.readFileSync('./memory.json', 'utf8'));
 } catch {
   memory = [];
 }
 
-// 📂 Resonance log file
+// 📜 Load resonance log
 try {
   resonanceLog = JSON.parse(fs.readFileSync('./resonance-log.json', 'utf8'));
 } catch {
@@ -139,48 +139,51 @@ async function pollLoop() {
         }
 
         const reply = await getGPTReply(tweet.text);
-        if (reply) {
-          const finalText = `${reply} 🤖 Automated ${randomSuffix()}`;
+        if (!reply) {
+          console.warn(`⚠️ No GPT reply for tweet ${tweet.id}`);
+          continue;
+        }
 
-          try {
-            await rwClient.v2.tweet({
-              text: finalText,
-              reply: {
-                in_reply_to_tweet_id: tweet.id
-              }
-            });
+        const finalText = `${reply} 🤖 Automated ${randomSuffix()}`;
 
-            console.log(`✅ Replied to ${tweet.id}`);
-            memory.push(tweet.id);
-            fs.writeFileSync('./memory.json', JSON.stringify(memory, null, 2));
+        try {
+          await rwClient.v2.tweet({
+            text: finalText,
+            reply: {
+              in_reply_to_tweet_id: tweet.id
+            }
+          });
 
-            const signals = extractSignals(tweet.text);
-            const archetype = identifyArchetype(tweet.text);
+          console.log(`✅ Replied to ${tweet.id}`);
+          memory.push(tweet.id);
+          fs.writeFileSync('./memory.json', JSON.stringify(memory, null, 2));
 
-            resonanceLog.push({
-              id: tweet.id,
-              text: tweet.text,
-              reply: finalText,
-              signal: signals,
-              archetype: archetype,
-              timestamp: new Date().toISOString()
-            });
+          const signals = extractSignals(tweet.text);
+          const archetype = identifyArchetype(tweet.text);
 
-            fs.writeFileSync('./resonance-log.json', JSON.stringify(resonanceLog, null, 2));
-            console.log(`📜 Logged reply for tweet ${tweet.id}`);
-          } catch (err) {
-            console.error(`❌ Error posting reply to ${tweet.id}:`, err?.data || err.message);
-          }
+          resonanceLog.push({
+            id: tweet.id,
+            text: tweet.text,
+            reply: finalText,
+            signal: signals,
+            archetype: archetype,
+            timestamp: new Date().toISOString()
+          });
+
+          fs.writeFileSync('./resonance-log.json', JSON.stringify(resonanceLog, null, 2));
+          console.log(`📜 Logged reply for tweet ${tweet.id}`);
+        } catch (err) {
+          console.error(`❌ Error posting tweet ${tweet.id}:`, err?.data || err.message);
         }
       }
     } catch (err) {
-      console.error('❌ Error polling:', err?.data || err.message || err);
+      console.error('❌ Error polling:', err?.data || err.message);
     }
 
   }, 5 * 60 * 1000);
 }
 
-// 🧠 Fetch GPT-powered reply
+// 🔗 GPT reply handler
 async function getGPTReply(text) {
   try {
     const res = await fetch(`${process.env.GPT_WEBHOOK_URL}`, {
@@ -190,11 +193,14 @@ async function getGPTReply(text) {
     });
 
     const raw = await res.text();
+    console.log('📡 GPT response raw:', raw);
+
     try {
       const parsed = JSON.parse(raw);
+      console.log('💬 GPT final reply:', parsed.reply);
       return parsed.reply || null;
-    } catch (err) {
-      console.error('❌ Invalid JSON from GPT:', raw);
+    } catch {
+      console.error('❌ Failed to parse GPT JSON:', raw);
       return null;
     }
   } catch (err) {
