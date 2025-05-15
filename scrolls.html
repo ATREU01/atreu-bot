@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Atreu Scrolls</title>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Unbounded', sans-serif;
+      background-color: #000;
+      color: #f8f8f8;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+      color: #00f0ff;
+    }
+    .scroll-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+    .scroll-card {
+      background-color: #111;
+      border: 1px solid #222;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+    }
+    .archetype-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: #00f0ff;
+      background: #111;
+      border: 1px solid #00f0ff;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 0.5rem;
+    }
+    .scroll-text {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    .timestamp {
+      font-size: 0.75rem;
+      color: #777;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>The Scrolls</h1>
+  <div class="scroll-container" id="scrollContainer"></div>
+
+  <script>
+    async function loadScrolls() {
+      const res = await fetch('/resonance-log.json');
+      const log = await res.json();
+
+      const container = document.getElementById('scrollContainer');
+      log.slice().reverse().forEach(entry => {
+        const card = document.createElement('div');
+        card.className = 'scroll-card';
+        card.innerHTML = `
+          <div class="archetype-tag">${entry.archetype.toUpperCase()}</div>
+          <div class="scroll-text">
+            <strong>Tweet:</strong> ${entry.text}<br><br>
+            <strong>Atreu:</strong> ${entry.reply}
+          </div>
+          <div class="timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+    loadScrolls();
+  </script>
+</body>
+</html>
