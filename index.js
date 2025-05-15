@@ -64,6 +64,14 @@ function identifyArchetype(text) {
   if (t.includes("cook") || t.includes("burn") || t.includes("thank me later")) return "flamekeeper";
   return "observer";
 }
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Serve static files (scrolls.html, resonance-log.json)
+app.use(express.static(__dirname));
 
 app.listen(port, () => {
   console.log(`✅ Atreu server running on port ${port}`);
